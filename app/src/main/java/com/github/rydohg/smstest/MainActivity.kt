@@ -2,6 +2,7 @@ package com.github.rydohg.smstest
 
 import android.app.Application
 import android.content.ContentUris
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.BaseColumns
@@ -17,6 +18,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import java.text.DateFormat
+import android.provider.ContactsContract
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -44,9 +48,10 @@ class MainActivity : AppCompatActivity() {
                 val date = query.getLong(query.getColumnIndex(Telephony.Mms.DATE))
                 val recipientId = query.getLong(query.getColumnIndex("recipient_ids"))
                 val number = getContactNumber(recipientId)
+                val displayName = getContactName(number)
                 val snippet = query.getString(query.getColumnIndex("snippet"))
 
-                convoList.add(Conversation(threadID, recipientId, number, date, snippet))
+                convoList.add(Conversation(threadID, recipientId, number, displayName, date, snippet))
             } while (query.moveToNext())
         }
         query.close()
@@ -78,9 +83,27 @@ class MainActivity : AppCompatActivity() {
         c.close()
         return number
     }
+
+    private fun getContactName(phoneNumber: String?): String {
+        val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber))
+
+        val projection = arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME)
+
+        var contactName = ""
+        val cursor = contentResolver.query(uri, projection, null, null, null)
+
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                contactName = cursor.getString(0)
+            }
+            cursor.close()
+        }
+
+        return contactName
+    }
 }
 
-data class Conversation(val convoID: Long, val recipientId: Long, val number: String?, val date: Long, val lastMessageContent: String?)
+data class Conversation(val convoID: Long, val recipientId: Long, val number: String?, val displayName: String?, val date: Long, val lastMessageContent: String?)
 
 class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) : RecyclerView.Adapter<ConvoAdapter.CustomViewHolder>() {
 
@@ -97,7 +120,12 @@ class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) :
         val lastMessageContent = convo.lastMessageContent
         val date = DateFormat.getDateInstance().format(convo.date)
 
-        holder.senderTextView.text = number
+        if (!convo.displayName.equals("")){
+            holder.senderTextView.text = convo.displayName
+        } else {
+            holder.senderTextView.text = number
+        }
+
         holder.lastMessageTextView.text = lastMessageContent
         holder.dateTextView.text = date
     }
