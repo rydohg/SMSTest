@@ -2,7 +2,6 @@ package com.github.rydohg.smstest
 
 import android.app.Application
 import android.content.ContentUris
-import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.BaseColumns
@@ -19,9 +18,6 @@ import android.view.ViewGroup
 import android.widget.TextView
 import java.text.DateFormat
 import android.provider.ContactsContract
-
-
-
 
 class MainActivity : AppCompatActivity() {
 
