@@ -2,6 +2,7 @@ package com.github.rydohg.smstest
 
 import android.app.Application
 import android.content.ContentUris
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.BaseColumns
@@ -58,13 +59,12 @@ class MainActivity : AppCompatActivity() {
         val mLayoutManager = LinearLayoutManager(parent)
         recyclerView.layoutManager = mLayoutManager
 
-
-        val mDividerItemDecoration = DividerItemDecoration(
+        /*val mDividerItemDecoration = DividerItemDecoration(
                 recyclerView.context,
                 mLayoutManager.orientation
         )
 
-        recyclerView.addItemDecoration(mDividerItemDecoration)
+        recyclerView.addItemDecoration(mDividerItemDecoration)*/
 
         recyclerView.adapter = ConvoAdapter(convoList)
     }
@@ -96,6 +96,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         return contactName
+    }
+
+    fun openNewConvoActivity(view: View){
+        val intent = Intent(this, NewConvoActivity::class.java)
+        startActivity(intent)
     }
 }
 
