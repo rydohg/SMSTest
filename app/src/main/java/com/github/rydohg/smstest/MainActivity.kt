@@ -2,6 +2,7 @@ package com.github.rydohg.smstest
 
 import android.app.Application
 import android.content.ContentUris
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -19,6 +20,11 @@ import android.view.ViewGroup
 import android.widget.TextView
 import java.text.DateFormat
 import android.provider.ContactsContract
+import android.view.MotionEvent
+import android.text.method.Touch.onTouchEvent
+import android.view.GestureDetector
+import java.io.Serializable
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,8 +38,9 @@ class MainActivity : AppCompatActivity() {
         val uri = Uri.parse("content://mms-sms/conversations?simple=true")
         val query = contentResolver.query(uri, projection, null, null, null)
         val convoList = ArrayList<Conversation>()
-        if (query.moveToFirst()){
-            for (col in query.columnNames){
+
+        if (query.moveToFirst()) {
+            for (col in query.columnNames) {
                 Log.d("ColNames", col + ": " + query.getShort(query.getColumnIndex(col)))
             }
             do {
@@ -56,6 +63,24 @@ class MainActivity : AppCompatActivity() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
 
         recyclerView.setHasFixedSize(true)
+        recyclerView.addOnItemTouchListener(
+                RecyclerItemClickListener(this, recyclerView,
+                        object : RecyclerItemClickListener.OnItemClickListener {
+                            override fun onItemClick(view: View, position: Int) {
+                                val intent = Intent(applicationContext, ConvoActivity::class.java)
+                                val bundle = Bundle()
+                                bundle.putSerializable("convo", convoList[position])
+                                intent.putExtras(bundle)
+                                startActivity(intent)
+                            }
+
+                            override fun onLongItemClick(view: View?, position: Int) {
+
+                            }
+                        }
+                )
+        )
+
         val mLayoutManager = LinearLayoutManager(parent)
         recyclerView.layoutManager = mLayoutManager
 
@@ -98,13 +123,19 @@ class MainActivity : AppCompatActivity() {
         return contactName
     }
 
-    fun openNewConvoActivity(view: View){
+    fun openNewConvoActivity(view: View) {
         val intent = Intent(this, NewConvoActivity::class.java)
         startActivity(intent)
     }
 }
 
-data class Conversation(val convoID: Long, val recipientId: Long, val number: String?, val displayName: String?, val date: Long, val lastMessageContent: String?)
+data class Conversation(
+        val convoID: Long,
+        val recipientId: Long,
+        val number: String?,
+        val displayName: String?,
+        val date: Long,
+        val lastMessageContent: String?): Serializable
 
 class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) : RecyclerView.Adapter<ConvoAdapter.CustomViewHolder>() {
 
@@ -121,7 +152,7 @@ class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) :
         val lastMessageContent = convo.lastMessageContent
         val date = DateFormat.getDateInstance().format(convo.date)
 
-        if (!convo.displayName.equals("")){
+        if (!convo.displayName.equals("")) {
             holder.senderTextView.text = convo.displayName
         } else {
             holder.senderTextView.text = number
@@ -140,4 +171,43 @@ class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) :
     }
 }
 
-class MyApplication: Application()
+class MyApplication : Application()
+
+class RecyclerItemClickListener(context: Context, recyclerView: RecyclerView, private val mListener: OnItemClickListener?) : RecyclerView.OnItemTouchListener {
+
+    private var mGestureDetector: GestureDetector
+
+    interface OnItemClickListener {
+        fun onItemClick(view: View, position: Int)
+
+        fun onLongItemClick(view: View?, position: Int)
+    }
+
+    init {
+        mGestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                return true
+            }
+
+            override fun onLongPress(e: MotionEvent) {
+                val child = recyclerView.findChildViewUnder(e.x, e.y)
+                if (child != null && mListener != null) {
+                    mListener.onLongItemClick(child, recyclerView.getChildAdapterPosition(child))
+                }
+            }
+        })
+    }
+
+    override fun onInterceptTouchEvent(view: RecyclerView, e: MotionEvent): Boolean {
+        val childView = view.findChildViewUnder(e.x, e.y)
+        if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e)) {
+            mListener.onItemClick(childView, view.getChildAdapterPosition(childView))
+            return true
+        }
+        return false
+    }
+
+    override fun onTouchEvent(view: RecyclerView, motionEvent: MotionEvent) {}
+
+    override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+}
