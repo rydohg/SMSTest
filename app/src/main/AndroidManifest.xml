@@ -22,7 +22,10 @@
             </intent-filter>
         </activity>
         <activity android:name=".NewConvoActivity" />
-        <activity android:name=".ConvoActivity"></activity>
+        <activity
+            android:name=".ConvoActivity"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar" />
     </application>
 
 </manifest>

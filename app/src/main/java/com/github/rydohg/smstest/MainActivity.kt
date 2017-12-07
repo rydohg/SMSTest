@@ -94,8 +94,8 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = ConvoAdapter(convoList)
     }
 
-    private fun getContactNumber(recipientId: Long): String? {
-        var number: String? = null
+    private fun getContactNumber(recipientId: Long): String {
+        var number: String = ""
         val c = contentResolver.query(ContentUris
                 .withAppendedId(Uri.parse("content://mms-sms/canonical-address"), recipientId), null, null, null, null)
         if (c!!.moveToFirst()) {
@@ -132,10 +132,18 @@ class MainActivity : AppCompatActivity() {
 data class Conversation(
         val convoID: Long,
         val recipientId: Long,
-        val number: String?,
-        val displayName: String?,
+        val number: String,
+        val displayName: String,
         val date: Long,
         val lastMessageContent: String?): Serializable
+
+fun nameOrPhoneNumber(displayName: String, phoneNumber: String): String {
+    return if (displayName !== "") {
+        displayName
+    } else {
+        phoneNumber
+    }
+}
 
 class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) : RecyclerView.Adapter<ConvoAdapter.CustomViewHolder>() {
 
@@ -152,11 +160,7 @@ class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) :
         val lastMessageContent = convo.lastMessageContent
         val date = DateFormat.getDateInstance().format(convo.date)
 
-        if (!convo.displayName.equals("")) {
-            holder.senderTextView.text = convo.displayName
-        } else {
-            holder.senderTextView.text = number
-        }
+        holder.senderTextView.text = nameOrPhoneNumber(convo.displayName, number)
 
         holder.lastMessageTextView.text = lastMessageContent
         holder.dateTextView.text = date
