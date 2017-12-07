@@ -32,15 +32,29 @@ class ConvoActivity : AppCompatActivity() {
         Log.d("ConvoActivity", conversation.convoID.toString())
 
         val projection = arrayOf("_id", "address", "body", "ct_t", "type", "msg_box")
+        //Get only SMS and MMS messages that have been sent
         val selection = "(type = 2 OR msg_box = 2)"
         val uri = Uri.parse("content://mms-sms/conversations/" + conversation.convoID)
         val c = contentResolver.query(uri, projection, selection, null, null)
 
-        val messages = ArrayList<String>()
+        val messages = ArrayList<Message>()
         if (c.moveToFirst()){
             do {
                 val body = c.getString(c.getColumnIndex("body"))
-                messages.add(body)
+                val address = c.getString(c.getColumnIndex("address"))
+                var received = false
+                if (address != null){
+                    received = true
+                }
+
+                val smsTypeColumn = c.getString(c.getColumnIndex("type"))
+                // For now SMS is type 1 and MMS is type 2
+                var type = 1
+                if (smsTypeColumn == null){
+                    type = 2
+                }
+                // 1L for msg_box is temporary
+                messages.add(Message(body, address, type, 1L, received))
             } while (c.moveToNext())
         }
         c.close()
@@ -55,11 +69,14 @@ class ConvoActivity : AppCompatActivity() {
     }
 }
 
-data class Message(val body: String, val address: String, val type: Long, val msg_box: Long)
-class MessageAdapter constructor(private val messageList: ArrayList<String>) : RecyclerView.Adapter<MessageAdapter.CustomViewHolder>() {
+//Address is null if I send the message
+//Body is null for MMS messages
+data class Message(val body: String?, val address: String?, val type: Int, val msg_box: Long, val received: Boolean)
+
+class MessageAdapter constructor(private val messageList: ArrayList<Message>) : RecyclerView.Adapter<MessageAdapter.CustomViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup?, viewType: Int): CustomViewHolder {
-        return if (viewType == 0) {
+        return if (viewType == 1) {
             CustomViewHolder(
                     LayoutInflater.from(parent?.context)
                         .inflate(R.layout.list_item_sent_message,
@@ -80,13 +97,17 @@ class MessageAdapter constructor(private val messageList: ArrayList<String>) : R
     }
 
     override fun getItemViewType(position: Int): Int {
-        return position % 2
+        return if(messageList[position].received) {
+            1
+        } else {
+            2
+        }
     }
 
     override fun onBindViewHolder(holder: CustomViewHolder, position: Int) {
         val message = messageList[position]
 
-        holder.messageTextView.text = message
+        holder.messageTextView.text = message.body
     }
 
     override fun getItemCount(): Int = messageList.size
