@@ -33,18 +33,18 @@ class ConvoActivity : AppCompatActivity() {
 
         val projection = arrayOf("_id", "address", "body", "ct_t", "type", "msg_box")
         //Get only SMS and MMS messages that have been sent
-        val selection = "(type = 2 OR msg_box = 2)"
+//        val selection = "(type = 2 OR msg_box = 2)"
         val uri = Uri.parse("content://mms-sms/conversations/" + conversation.convoID)
-        val c = contentResolver.query(uri, projection, selection, null, null)
+        val c = contentResolver.query(uri, projection, null, null, null)
 
         val messages = ArrayList<Message>()
         if (c.moveToFirst()){
             do {
                 val body = c.getString(c.getColumnIndex("body"))
                 val address = c.getString(c.getColumnIndex("address"))
-                var received = false
+                var received = true
                 if (address != null){
-                    received = true
+                    received = false
                 }
 
                 val smsTypeColumn = c.getString(c.getColumnIndex("type"))
@@ -77,7 +77,7 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
 
     override fun onCreateViewHolder(parent: ViewGroup?, viewType: Int): CustomViewHolder {
         return if (viewType == 1) {
-            CustomViewHolder(
+            SentMessageViewHolder(
                     LayoutInflater.from(parent?.context)
                         .inflate(R.layout.list_item_sent_message,
                                 parent,
@@ -85,7 +85,7 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
                             as ConstraintLayout
             )
         } else {
-            CustomViewHolder(
+            ReceivedMessageViewHolder(
                     LayoutInflater.from(parent?.context)
                             .inflate(R.layout.list_item_received_message,
                                     parent,
@@ -97,9 +97,10 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if(messageList[position].received) {
+        return if (messageList[position].received){
             1
-        } else {
+        }
+        else {
             2
         }
     }
@@ -112,15 +113,15 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
 
     override fun getItemCount(): Int = messageList.size
 
-    open inner class CustomViewHolder(rootView: View): RecyclerView.ViewHolder(rootView) {
-        var messageTextView: TextView = rootView.findViewById(R.id.message_text_view)
+    abstract inner class CustomViewHolder(rootView: View): RecyclerView.ViewHolder(rootView) {
+        abstract var messageTextView: TextView
     }
 
     inner class SentMessageViewHolder(rootView: View) : CustomViewHolder(rootView) {
-
+        override var messageTextView: TextView = rootView.findViewById(R.id.sent_message_text_view)
     }
 
     inner class ReceivedMessageViewHolder(rootView: View) : CustomViewHolder(rootView) {
-
+        override var messageTextView: TextView = rootView.findViewById(R.id.received_message_text_view)
     }
 }
