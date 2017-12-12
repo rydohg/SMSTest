@@ -12,6 +12,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import java.io.IOException
+import java.io.InputStream
 
 
 class ConvoActivity : AppCompatActivity() {
@@ -32,29 +36,50 @@ class ConvoActivity : AppCompatActivity() {
         Log.d("ConvoActivity", conversation.convoID.toString())
 
         val projection = arrayOf("_id", "address", "body", "ct_t", "type", "msg_box")
-        //Get only SMS and MMS messages that have been sent
-//        val selection = "(type = 2 OR msg_box = 2)"
+
         val uri = Uri.parse("content://mms-sms/conversations/" + conversation.convoID)
         val c = contentResolver.query(uri, projection, null, null, null)
 
         val messages = ArrayList<Message>()
-        if (c.moveToFirst()){
+        var counter = 0
+        if (c.moveToFirst()) {
             do {
                 val body = c.getString(c.getColumnIndex("body"))
                 val address = c.getString(c.getColumnIndex("address"))
-                var received = true
-                if (address != null){
-                    received = false
-                }
 
                 val smsTypeColumn = c.getString(c.getColumnIndex("type"))
+                val mmsTypeColumn = c.getString(c.getColumnIndex("msg_box"))
+
+                var received = true
+                if (smsTypeColumn != null) {
+                    if (smsTypeColumn.toInt() == 2) {
+                        received = false
+                    }
+                }
+                if (mmsTypeColumn != null) {
+                    if (mmsTypeColumn.toInt() == 2) {
+                        received = false
+                        /*if (counter == 0) {
+                            val mmsURI = Uri.parse("content://mms/")
+                            val selection = "_id = " + c.getLong(c.getColumnIndex("_id"))
+                            val cursor = contentResolver.query(mmsURI, null, selection, null, null)
+                            cursor.moveToFirst()
+                            for (i in cursor.columnNames) {
+                                Log.d("ColName", "Name: " + i + " " + cursor.getString(cursor.getColumnIndex(i)))
+                            }
+                            cursor.close()
+                            counter++
+                        }*/
+                    }
+                }
                 // For now SMS is type 1 and MMS is type 2
+//                Log.d("Messages", "SMS Type: $smsTypeColumn MMS Type: $mmsTypeColumn")
                 var type = 1
-                if (smsTypeColumn == null){
+                if (smsTypeColumn == null) {
                     type = 2
                 }
                 // 1L for msg_box is temporary
-                messages.add(Message(body, address, type, 1L, received))
+                messages.add(Message(body, address, type, mmsTypeColumn?.toLong(), received))
             } while (c.moveToNext())
         }
         c.close()
@@ -67,41 +92,72 @@ class ConvoActivity : AppCompatActivity() {
 
         recyclerView.scrollToPosition(messages.size - 1)
     }
+
+    private fun getMmsImage(_id: String): Bitmap? {
+        val partURI = Uri.parse("content://mms/part/" + _id)
+        var inputStream: InputStream? = null
+        var bitmap: Bitmap? = null
+        try {
+            inputStream = contentResolver.openInputStream(partURI)
+            bitmap = BitmapFactory.decodeStream(inputStream)
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close()
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        return bitmap
+    }
 }
 
-//Address is null if I send the message
 //Body is null for MMS messages
-data class Message(val body: String?, val address: String?, val type: Int, val msg_box: Long, val received: Boolean)
+data class Message(val body: String?, val address: String?, val type: Int, val msg_box: Long?, val received: Boolean)
 
 class MessageAdapter constructor(private val messageList: ArrayList<Message>) : RecyclerView.Adapter<MessageAdapter.CustomViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup?, viewType: Int): CustomViewHolder {
-        return if (viewType == 1) {
-            SentMessageViewHolder(
+         if (viewType == 1) {
+            return SentMessageViewHolder(
                     LayoutInflater.from(parent?.context)
-                        .inflate(R.layout.list_item_sent_message,
-                                parent,
-                                false)
+                            .inflate(R.layout.list_item_sent_message,
+                                    parent,
+                                    false)
                             as ConstraintLayout
             )
-        } else {
-            ReceivedMessageViewHolder(
+        } else if (viewType == 2){
+            return ReceivedMessageViewHolder(
                     LayoutInflater.from(parent?.context)
                             .inflate(R.layout.list_item_received_message,
                                     parent,
                                     false)
                             as ConstraintLayout
             )
-        }
+        } else {
+             return ReceivedMessageViewHolder(
+                     LayoutInflater.from(parent?.context)
+                             .inflate(R.layout.list_item_received_message,
+                                     parent,
+                                     false)
+                             as ConstraintLayout
+             )
+         }
 
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (messageList[position].received){
+        return if (messageList[position].received) {
+            if (messageList[position].msg_box != null){
+                3
+            } else {
+                2
+            }
+        } else {
             1
-        }
-        else {
-            2
         }
     }
 
@@ -113,7 +169,7 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
 
     override fun getItemCount(): Int = messageList.size
 
-    abstract inner class CustomViewHolder(rootView: View): RecyclerView.ViewHolder(rootView) {
+    abstract inner class CustomViewHolder(rootView: View) : RecyclerView.ViewHolder(rootView) {
         abstract var messageTextView: TextView
     }
 
