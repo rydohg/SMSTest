@@ -14,8 +14,12 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
+import android.widget.ImageView
 import java.io.IOException
 import java.io.InputStream
+import jdk.nashorn.internal.runtime.ScriptingFunctions.readLine
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 
 class ConvoActivity : AppCompatActivity() {
@@ -42,13 +46,17 @@ class ConvoActivity : AppCompatActivity() {
 
         val messages = ArrayList<Message>()
         var counter = 0
+
         if (c.moveToFirst()) {
             do {
-                val body = c.getString(c.getColumnIndex("body"))
+                val id = c.getString(c.getColumnIndex("_id"))
+                var body = c.getString(c.getColumnIndex("body"))
                 val address = c.getString(c.getColumnIndex("address"))
+                val ct_t = c.getString(c.getColumnIndex("ct_t"))
 
                 val smsTypeColumn = c.getString(c.getColumnIndex("type"))
                 val mmsTypeColumn = c.getString(c.getColumnIndex("msg_box"))
+                var bitmap: Bitmap? = null
 
                 var received = true
                 if (smsTypeColumn != null) {
@@ -59,27 +67,38 @@ class ConvoActivity : AppCompatActivity() {
                 if (mmsTypeColumn != null) {
                     if (mmsTypeColumn.toInt() == 2) {
                         received = false
-                        /*if (counter == 0) {
-                            val mmsURI = Uri.parse("content://mms/")
-                            val selection = "_id = " + c.getLong(c.getColumnIndex("_id"))
-                            val cursor = contentResolver.query(mmsURI, null, selection, null, null)
-                            cursor.moveToFirst()
-                            for (i in cursor.columnNames) {
-                                Log.d("ColName", "Name: " + i + " " + cursor.getString(cursor.getColumnIndex(i)))
+                        if ("text/plain" == ct_t) {
+                            // Extremely inefficient
+                            val mmsUri = Uri.parse("content://mms/part")
+                            val selectionPart = "mid=" + id
+                            val mmsCursor = contentResolver.query(mmsUri, null,
+                                    selectionPart, null, null)
+                            mmsCursor.moveToFirst()
+                            val data = mmsCursor.getString(c.getColumnIndex("_data"))
+                            mmsCursor.close()
+
+                            body = if (data != null) {
+                                getMmsText(id)
+                            } else {
+                                mmsCursor.getString(mmsCursor.getColumnIndex("text"))
                             }
-                            cursor.close()
-                            counter++
-                        }*/
+                        } else if ("image/jpeg" == ct_t || "image/bmp" == ct_t ||
+                                "image/gif" == ct_t || "image/jpg" == ct_t ||
+                                "image/png" == ct_t) {
+                            bitmap = getMmsImage(id)
+                        }
+
+                        getMmsImage(id)
                     }
                 }
                 // For now SMS is type 1 and MMS is type 2
 //                Log.d("Messages", "SMS Type: $smsTypeColumn MMS Type: $mmsTypeColumn")
-                var type = 1
+                var messageType = 1
                 if (smsTypeColumn == null) {
-                    type = 2
+                    messageType = 2
                 }
                 // 1L for msg_box is temporary
-                messages.add(Message(body, address, type, mmsTypeColumn?.toLong(), received))
+                messages.add(Message(body, address, messageType, mmsTypeColumn?.toLong(), bitmap, received))
             } while (c.moveToNext())
         }
         c.close()
@@ -113,39 +132,68 @@ class ConvoActivity : AppCompatActivity() {
         }
         return bitmap
     }
+
+    private fun getMmsText(id: String): String {
+        val partURI = Uri.parse("content://mms/part/" + id)
+        var inputStream: InputStream? = null
+        val sb = StringBuilder()
+        try {
+            inputStream = contentResolver.openInputStream(partURI)
+            if (inputStream != null) {
+                val isr = InputStreamReader(inputStream, "UTF-8")
+                val reader = BufferedReader(isr)
+                var temp = reader.readLine()
+                while (temp != null) {
+                    sb.append(temp)
+                    temp = reader.readLine()
+                }
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close()
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+
+            }
+        }
+        return sb.toString()
+    }
 }
 
 //Body is null for MMS messages
-data class Message(val body: String?, val address: String?, val type: Int, val msg_box: Long?, val received: Boolean)
+data class Message(val body: String?, val address: String?, val type: Int, val msg_box: Long?, val image: Bitmap?, val received: Boolean)
 
 class MessageAdapter constructor(private val messageList: ArrayList<Message>) : RecyclerView.Adapter<MessageAdapter.CustomViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup?, viewType: Int): CustomViewHolder {
-         if (viewType == 1) {
-            return SentMessageViewHolder(
+        when (viewType) {
+            1 -> return SentMessageViewHolder(
                     LayoutInflater.from(parent?.context)
                             .inflate(R.layout.list_item_sent_message,
                                     parent,
                                     false)
                             as ConstraintLayout
             )
-        } else if (viewType == 2){
-            return ReceivedMessageViewHolder(
+            2 -> return ReceivedMessageViewHolder(
                     LayoutInflater.from(parent?.context)
                             .inflate(R.layout.list_item_received_message,
                                     parent,
                                     false)
                             as ConstraintLayout
             )
-        } else {
-             return ReceivedMessageViewHolder(
-                     LayoutInflater.from(parent?.context)
-                             .inflate(R.layout.list_item_received_message,
-                                     parent,
-                                     false)
-                             as ConstraintLayout
-             )
-         }
+            else -> return ReceivedMessageViewHolder(
+                    LayoutInflater.from(parent?.context)
+                            .inflate(R.layout.list_item_received_mms_message,
+                                    parent,
+                                    false)
+                            as ConstraintLayout
+            )
+        }
 
     }
 
@@ -165,6 +213,9 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
         val message = messageList[position]
 
         holder.messageTextView.text = message.body
+        if (holder is ReceivedMMSViewHolder){
+            holder.imageView.setImageBitmap(messageList[position].image)
+        }
     }
 
     override fun getItemCount(): Int = messageList.size
@@ -179,5 +230,10 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
 
     inner class ReceivedMessageViewHolder(rootView: View) : CustomViewHolder(rootView) {
         override var messageTextView: TextView = rootView.findViewById(R.id.received_message_text_view)
+    }
+
+    inner class ReceivedMMSViewHolder(rootView: View) : CustomViewHolder(rootView) {
+        override var messageTextView: TextView = rootView.findViewById(R.id.received_message_text_view)
+        var imageView: ImageView = rootView.findViewById(R.id.imageView)
     }
 }
