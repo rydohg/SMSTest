@@ -17,7 +17,6 @@ import android.graphics.Bitmap
 import android.widget.ImageView
 import java.io.IOException
 import java.io.InputStream
-import jdk.nashorn.internal.runtime.ScriptingFunctions.readLine
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -45,8 +44,6 @@ class ConvoActivity : AppCompatActivity() {
         val c = contentResolver.query(uri, projection, null, null, null)
 
         val messages = ArrayList<Message>()
-        var counter = 0
-
         if (c.moveToFirst()) {
             do {
                 val id = c.getString(c.getColumnIndex("_id"))
@@ -74,6 +71,9 @@ class ConvoActivity : AppCompatActivity() {
                             val mmsCursor = contentResolver.query(mmsUri, null,
                                     selectionPart, null, null)
                             mmsCursor.moveToFirst()
+                            for (i in mmsCursor.columnNames){
+                                Log.d("MMSCol:", i + " = " + c.getString(c.getColumnIndex(i)))
+                            }
                             val data = mmsCursor.getString(c.getColumnIndex("_data"))
                             mmsCursor.close()
 
@@ -88,7 +88,6 @@ class ConvoActivity : AppCompatActivity() {
                             bitmap = getMmsImage(id)
                         }
 
-                        getMmsImage(id)
                     }
                 }
                 // For now SMS is type 1 and MMS is type 2
@@ -114,6 +113,14 @@ class ConvoActivity : AppCompatActivity() {
 
     private fun getMmsImage(_id: String): Bitmap? {
         val partURI = Uri.parse("content://mms/part/" + _id)
+        val testCursor = contentResolver.query(partURI, null,
+                null, null, null)
+        Log.d("MMSCol1", "_id= " + _id)
+        testCursor.moveToFirst()
+        for (i in testCursor.columnNames){
+            Log.d("MMSCol1", i + " = " + testCursor.getString(testCursor.getColumnIndex(i)))
+        }
+        testCursor.close()
         var inputStream: InputStream? = null
         var bitmap: Bitmap? = null
         try {
