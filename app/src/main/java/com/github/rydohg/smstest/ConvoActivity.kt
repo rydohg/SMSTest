@@ -64,30 +64,38 @@ class ConvoActivity : AppCompatActivity() {
                 if (mmsTypeColumn != null) {
                     if (mmsTypeColumn.toInt() == 2) {
                         received = false
-                        if ("text/plain" == ct_t) {
-                            // Extremely inefficient
-                            val mmsUri = Uri.parse("content://mms/part")
-                            val selectionPart = "mid=" + id
-                            val mmsCursor = contentResolver.query(mmsUri, null,
-                                    selectionPart, null, null)
-                            mmsCursor.moveToFirst()
-                            for (i in mmsCursor.columnNames){
-                                Log.d("MMSCol:", i + " = " + c.getString(c.getColumnIndex(i)))
-                            }
-                            val data = mmsCursor.getString(c.getColumnIndex("_data"))
-                            mmsCursor.close()
+                        //TODO: Make more efficient
+                        val selectionPart = "mid=" + id
+                        val mmsUri = Uri.parse("content://mms/part")
+                        val mmsCursor = contentResolver.query(mmsUri, null,
+                                selectionPart, null, null)
+                        if (mmsCursor!!.moveToFirst()) {
+                            do {
+                                val partId = mmsCursor.getString(mmsCursor.getColumnIndex("_id"))
+                                val ct = mmsCursor.getString(mmsCursor.getColumnIndex("ct"))
 
-                            body = if (data != null) {
-                                getMmsText(id)
-                            } else {
-                                mmsCursor.getString(mmsCursor.getColumnIndex("text"))
-                            }
-                        } else if ("image/jpeg" == ct_t || "image/bmp" == ct_t ||
-                                "image/gif" == ct_t || "image/jpg" == ct_t ||
-                                "image/png" == ct_t) {
-                            bitmap = getMmsImage(id)
+                                if ("text/plain" == ct) {
+                                    for (i in mmsCursor.columnNames){
+                                        Log.d("MMSCol:", i + " = " + c.getString(c.getColumnIndex(i)))
+                                    }
+                                    val data = mmsCursor.getString(c.getColumnIndex("_data"))
+                                    mmsCursor.close()
+
+                                    body = if (data != null) {
+                                        getMmsText(id)
+                                    } else {
+                                        mmsCursor.getString(mmsCursor.getColumnIndex("text"))
+                                    }
+                                } else if ("image/jpeg" == ct || "image/bmp" == ct ||
+                                        "image/gif" == ct || "image/jpg" == ct ||
+                                        "image/png" == ct) {
+                                    bitmap = getMmsImage(partId)
+                                }
+
+                            } while (mmsCursor.moveToNext())
                         }
 
+                        mmsCursor.close()
                     }
                 }
                 // For now SMS is type 1 and MMS is type 2
@@ -193,7 +201,7 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
                                     false)
                             as ConstraintLayout
             )
-            else -> return ReceivedMessageViewHolder(
+            else -> return ReceivedMMSViewHolder(
                     LayoutInflater.from(parent?.context)
                             .inflate(R.layout.list_item_received_mms_message,
                                     parent,
@@ -221,7 +229,7 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
 
         holder.messageTextView.text = message.body
         if (holder is ReceivedMMSViewHolder){
-            holder.imageView.setImageBitmap(messageList[position].image)
+            holder.imageView.setImageBitmap(message.image)
         }
     }
 
