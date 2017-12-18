@@ -1,5 +1,6 @@
 package com.github.rydohg.smstest
 
+import android.database.Cursor
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -64,7 +65,6 @@ class ConvoActivity : AppCompatActivity() {
                 if (mmsTypeColumn != null) {
                     if (mmsTypeColumn.toInt() == 2) {
                         received = false
-                        //TODO: Make more efficient
                         val selectionPart = "mid=" + id
                         val mmsUri = Uri.parse("content://mms/part")
                         val mmsCursor = contentResolver.query(mmsUri, null,
@@ -73,16 +73,12 @@ class ConvoActivity : AppCompatActivity() {
                             do {
                                 val partId = mmsCursor.getString(mmsCursor.getColumnIndex("_id"))
                                 val ct = mmsCursor.getString(mmsCursor.getColumnIndex("ct"))
-
+                                Log.d("Content Type", partId + " " + ct)
                                 if ("text/plain" == ct) {
-                                    for (i in mmsCursor.columnNames){
-                                        Log.d("MMSCol:", i + " = " + c.getString(c.getColumnIndex(i)))
-                                    }
-                                    val data = mmsCursor.getString(c.getColumnIndex("_data"))
-                                    mmsCursor.close()
+                                    val data = mmsCursor.getString(mmsCursor.getColumnIndex("_data"))
 
                                     body = if (data != null) {
-                                        getMmsText(id)
+                                            getMmsText(id)
                                     } else {
                                         mmsCursor.getString(mmsCursor.getColumnIndex("text"))
                                     }
@@ -121,14 +117,7 @@ class ConvoActivity : AppCompatActivity() {
 
     private fun getMmsImage(_id: String): Bitmap? {
         val partURI = Uri.parse("content://mms/part/" + _id)
-        val testCursor = contentResolver.query(partURI, null,
-                null, null, null)
-        Log.d("MMSCol1", "_id= " + _id)
-        testCursor.moveToFirst()
-        for (i in testCursor.columnNames){
-            Log.d("MMSCol1", i + " = " + testCursor.getString(testCursor.getColumnIndex(i)))
-        }
-        testCursor.close()
+
         var inputStream: InputStream? = null
         var bitmap: Bitmap? = null
         try {
