@@ -1,5 +1,6 @@
 package com.github.rydohg.smstest
 
+import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
@@ -20,6 +21,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import android.provider.MediaStore
+import java.net.URI
 
 
 class ConvoActivity : AppCompatActivity() {
@@ -62,6 +65,7 @@ class ConvoActivity : AppCompatActivity() {
                         received = false
                     }
                 }
+
                 if (mmsTypeColumn != null) {
                     if (mmsTypeColumn.toInt() == 2) {
                         received = false
@@ -85,6 +89,7 @@ class ConvoActivity : AppCompatActivity() {
                                 } else if ("image/jpeg" == ct || "image/bmp" == ct ||
                                         "image/gif" == ct || "image/jpg" == ct ||
                                         "image/png" == ct) {
+//                                    bitmap = mmsCursor.getString(mmsCursor.getColumnIndex("_data"))
                                     bitmap = getMmsImage(partId)
                                 }
 
@@ -100,7 +105,7 @@ class ConvoActivity : AppCompatActivity() {
                 if (smsTypeColumn == null) {
                     messageType = 2
                 }
-                // 1L for msg_box is temporary
+
                 messages.add(Message(body, address, messageType, mmsTypeColumn?.toLong(), bitmap, received))
             } while (c.moveToNext())
         }
@@ -110,7 +115,7 @@ class ConvoActivity : AppCompatActivity() {
         recyclerView.setHasFixedSize(true)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = MessageAdapter(messages)
+        recyclerView.adapter = MessageAdapter(messages, this)
 
         recyclerView.scrollToPosition(messages.size - 1)
     }
@@ -172,7 +177,7 @@ class ConvoActivity : AppCompatActivity() {
 //Body is null for MMS messages
 data class Message(val body: String?, val address: String?, val type: Int, val msg_box: Long?, val image: Bitmap?, val received: Boolean)
 
-class MessageAdapter constructor(private val messageList: ArrayList<Message>) : RecyclerView.Adapter<MessageAdapter.CustomViewHolder>() {
+class MessageAdapter constructor(private val messageList: ArrayList<Message>, val context: Context) : RecyclerView.Adapter<MessageAdapter.CustomViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup?, viewType: Int): CustomViewHolder {
         when (viewType) {
@@ -202,14 +207,10 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (messageList[position].received) {
-            if (messageList[position].msg_box != null){
-                3
-            } else {
-                2
-            }
-        } else {
-            1
+        return when {
+            messageList[position].received -> 2
+            messageList[position].image != null -> 3
+            else -> 1
         }
     }
 
@@ -218,7 +219,11 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>) : 
 
         holder.messageTextView.text = message.body
         if (holder is ReceivedMMSViewHolder){
-            holder.imageView.setImageBitmap(message.image)
+            if (message.image != null) {
+                //TODO: Do in background thread
+
+                holder.imageView.setImageBitmap(message.image)
+            }
         }
     }
 

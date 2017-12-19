@@ -1,9 +1,11 @@
 package com.github.rydohg.smstest
 
+import android.Manifest
 import android.app.Application
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.BaseColumns
@@ -20,6 +22,8 @@ import android.view.ViewGroup
 import android.widget.TextView
 import java.text.DateFormat
 import android.provider.ContactsContract
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import android.view.MotionEvent
 import android.text.method.Touch.onTouchEvent
 import android.view.GestureDetector
@@ -31,7 +35,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        //Ask for permission
+        val permissions: Array<String> = arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_SMS,
+                Manifest.permission.SEND_SMS,
+                Manifest.permission.READ_CONTACTS)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_DENIED){
+            ActivityCompat.requestPermissions(this, permissions, 1)
+        }
         //Get SMS/MMS Conversations
         val contentResolver = contentResolver
         val projection = arrayOf("*")
@@ -40,9 +53,6 @@ class MainActivity : AppCompatActivity() {
         val convoList = ArrayList<Conversation>()
 
         if (query.moveToFirst()) {
-            for (col in query.columnNames) {
-                Log.d("ColNames", col + ": " + query.getShort(query.getColumnIndex(col)))
-            }
             do {
                 /***
                  * These apply to both SMS and MMS according to
@@ -135,7 +145,7 @@ data class Conversation(
         val number: String,
         val displayName: String,
         val date: Long,
-        val lastMessageContent: String?): Serializable
+        val lastMessageContent: String?) : Serializable
 
 fun nameOrPhoneNumber(displayName: String, phoneNumber: String): String {
     return if (displayName !== "") {
