@@ -77,19 +77,17 @@ class ConvoActivity : AppCompatActivity() {
                             do {
                                 val partId = mmsCursor.getString(mmsCursor.getColumnIndex("_id"))
                                 val ct = mmsCursor.getString(mmsCursor.getColumnIndex("ct"))
-                                Log.d("Content Type", partId + " " + ct)
                                 if ("text/plain" == ct) {
-                                    val data = mmsCursor.getString(mmsCursor.getColumnIndex("_data"))
+                                    val data: String? = mmsCursor.getString(mmsCursor.getColumnIndex("_data"))
 
                                     body = if (data != null) {
-                                            getMmsText(id)
+                                        getMmsText(partId)
                                     } else {
                                         mmsCursor.getString(mmsCursor.getColumnIndex("text"))
                                     }
                                 } else if ("image/jpeg" == ct || "image/bmp" == ct ||
                                         "image/gif" == ct || "image/jpg" == ct ||
                                         "image/png" == ct) {
-//                                    bitmap = mmsCursor.getString(mmsCursor.getColumnIndex("_data"))
                                     bitmap = getMmsImage(partId)
                                 }
 
@@ -100,7 +98,6 @@ class ConvoActivity : AppCompatActivity() {
                     }
                 }
                 // For now SMS is type 1 and MMS is type 2
-//                Log.d("Messages", "SMS Type: $smsTypeColumn MMS Type: $mmsTypeColumn")
                 var messageType = 1
                 if (smsTypeColumn == null) {
                     messageType = 2
@@ -159,8 +156,7 @@ class ConvoActivity : AppCompatActivity() {
             }
         } catch (e: IOException) {
             e.printStackTrace()
-        }
-        finally {
+        } finally {
             if (inputStream != null) {
                 try {
                     inputStream.close()
@@ -218,7 +214,7 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>, va
         val message = messageList[position]
 
         holder.messageTextView.text = message.body
-        if (holder is ReceivedMMSViewHolder){
+        if (holder is ReceivedMMSViewHolder) {
             if (message.image != null) {
                 //TODO: Do in background thread
 
