@@ -27,6 +27,7 @@ import android.support.v4.content.ContextCompat
 import android.view.MotionEvent
 import android.text.method.Touch.onTouchEvent
 import android.view.GestureDetector
+import com.facebook.stetho.Stetho
 import java.io.Serializable
 
 
@@ -185,7 +186,12 @@ class ConvoAdapter constructor(private val convoList: ArrayList<Conversation>) :
     }
 }
 
-class MyApplication : Application()
+class MyApplication : Application(){
+    override fun onCreate() {
+        super.onCreate()
+        Stetho.initializeWithDefaults(this)
+    }
+}
 
 class RecyclerItemClickListener(context: Context, recyclerView: RecyclerView, private val mListener: OnItemClickListener?) : RecyclerView.OnItemTouchListener {
 
