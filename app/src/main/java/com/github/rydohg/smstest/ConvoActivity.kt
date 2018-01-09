@@ -22,6 +22,7 @@ import java.io.InputStream
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import android.provider.MediaStore
+import android.widget.LinearLayout
 import java.net.URI
 
 
@@ -126,7 +127,9 @@ class ConvoActivity : AppCompatActivity() {
         var bitmap: Bitmap? = null
         try {
             inputStream = contentResolver.openInputStream(partURI)
-            bitmap = BitmapFactory.decodeStream(inputStream)
+            val options = BitmapFactory.Options()
+            options.inSampleSize = 2
+            bitmap = BitmapFactory.decodeStream(inputStream, null, options)
         } catch (e: IOException) {
             e.printStackTrace()
         } finally {
@@ -231,11 +234,18 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>, va
 
         if (holder is ReceivedMMSViewHolder) {
             //TODO: Do in background thread
-            holder.imageView.setImageBitmap(message.images[0])
+            /*holder.imageView.setImageBitmap(message.images[0])
             if (message.images.size == 2) {
                 holder.imageView2.visibility = View.VISIBLE
                 holder.imageView2.setImageBitmap(message.images[1])
-            }
+            }*/
+            val imageView = ImageView(context)
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.setMargins(0, 0, 10, 0)
+            imageView.layoutParams = lp
+            imageView.setImageBitmap(message.images[0])
+            holder.imageLayout.addView(imageView)
+
         } else if (holder is SentMMSViewHolder) {
             holder.imageView.setImageBitmap(message.images[0])
             if (message.images.size == 2) {
@@ -261,8 +271,9 @@ class MessageAdapter constructor(private val messageList: ArrayList<Message>, va
 
     inner class ReceivedMMSViewHolder(rootView: View) : CustomViewHolder(rootView) {
         override var messageTextView: TextView = rootView.findViewById(R.id.received_message_text_view)
-        var imageView: ImageView = rootView.findViewById(R.id.imageView)
-        var imageView2: ImageView = rootView.findViewById(R.id.imageView2)
+        /*var imageView: ImageView = rootView.findViewById(R.id.imageView)
+        var imageView2: ImageView = rootView.findViewById(R.id.imageView2)*/
+        var imageLayout: LinearLayout = rootView.findViewById(R.id.imageViewLayout)
     }
 
     inner class SentMMSViewHolder(rootView: View) : CustomViewHolder(rootView) {
